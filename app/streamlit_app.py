@@ -1,4 +1,3 @@
-
 """
 Market Intelligence Dashboard
 Professional Financial Analysis Platform
@@ -20,6 +19,7 @@ from src.agentic_finance_dashboard.tools import get_stock_data_with_indicators, 
 from src.agentic_finance_dashboard.config import GROQ_API_KEY
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
+
 # Page Configuration
 st.set_page_config(
     page_title="Market Intelligence Dashboard",
@@ -537,7 +537,7 @@ def create_candlestick_chart(candles, symbol):
         return None
 
 # ============================================================================
-# AI Analysis Function
+# AI Analysis Function - Clean, No HTML
 # ============================================================================
 
 def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
@@ -581,11 +581,21 @@ INDUSTRY: {metrics.get('industry', 'N/A')}
 
 LATEST NEWS: {news_summary}
 
-Provide analysis in this exact format with NO HTML tags:
+CRITICAL INSTRUCTION: Your response MUST be in plain text format with NO HTML tags.
+DO NOT use: <p>, <strong>, <br>, <h1>, <h2>, <div>, <span>, <b>, <i>, or any other HTML tags.
+ONLY use plain text with line breaks.
+
+Format your response EXACTLY like this (plain text only):
 OVERVIEW: [2-3 sentences]
 FINANCIALS: [2-3 sentences]
 TECHNICAL: [1-2 sentences]
 RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
+
+Example of correct format:
+OVERVIEW: Apple Inc. is a leading technology company...
+FINANCIALS: With a P/E ratio of 35.79...
+TECHNICAL: The stock is trading at $312.42...
+RECOMMENDATION: HOLD - The stock is near its 52-week high...
 """
     
     llm = get_llm()
@@ -595,7 +605,10 @@ RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
         content = response.content
-        content = re.sub(r'<[^>]+>', '', content)
+        
+        # Strong HTML cleaning
+        content = re.sub(r'<[^>]+>', '', content)  # Remove all HTML tags
+        content = re.sub(r'&[a-z]+;', '', content)  # Remove HTML entities
         
         overview = ""
         financials = ""
@@ -605,13 +618,17 @@ RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
         
         for line in content.split('\n'):
             line = line.strip()
-            if line.upper().startswith("OVERVIEW:"):
+            if not line:
+                continue
+            
+            upper_line = line.upper()
+            if upper_line.startswith("OVERVIEW:"):
                 overview = line.replace("OVERVIEW:", "").strip()
-            elif line.upper().startswith("FINANCIALS:"):
+            elif upper_line.startswith("FINANCIALS:"):
                 financials = line.replace("FINANCIALS:", "").strip()
-            elif line.upper().startswith("TECHNICAL:"):
+            elif upper_line.startswith("TECHNICAL:"):
                 technical = line.replace("TECHNICAL:", "").strip()
-            elif line.upper().startswith("RECOMMENDATION:"):
+            elif upper_line.startswith("RECOMMENDATION:"):
                 rec_text = line.replace("RECOMMENDATION:", "").strip()
                 if "BUY" in rec_text.upper():
                     rec_type = "BUY"
@@ -620,6 +637,30 @@ RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
                 else:
                     rec_type = "HOLD"
                 recommendation = rec_text
+        
+        # If parsing failed, try to extract from full content
+        if not overview and not financials and not technical and not recommendation:
+            lines = [l.strip() for l in content.split('\n') if l.strip()]
+            for line in lines:
+                if "OVERVIEW" in line.upper():
+                    overview = line.split(":", 1)[-1].strip() if ":" in line else line
+                elif "FINANCIAL" in line.upper():
+                    financials = line.split(":", 1)[-1].strip() if ":" in line else line
+                elif "TECHNICAL" in line.upper():
+                    technical = line.split(":", 1)[-1].strip() if ":" in line else line
+                elif "RECOMMENDATION" in line.upper():
+                    rec_text = line.split(":", 1)[-1].strip() if ":" in line else line
+                    if "BUY" in rec_text.upper():
+                        rec_type = "BUY"
+                    elif "SELL" in rec_text.upper():
+                        rec_type = "SELL"
+                    else:
+                        rec_type = "HOLD"
+                    recommendation = rec_text
+        
+        # Fallback: if still empty, use whole content
+        if not overview and not financials and not technical and not recommendation:
+            overview = content[:300]
         
         return {
             "overview": overview,
@@ -744,7 +785,7 @@ if st.session_state.analyzed:
     
     with st.spinner(f"Analyzing {symbol}..."):
         
-        # Fetch data
+        # Fetch data with indicators
         result = get_stock_data_with_indicators(symbol, "1mo")
         data_source = "Global Markets"
         
@@ -755,6 +796,7 @@ if st.session_state.analyzed:
         metrics = result.get('metrics', {})
         candles = result.get('candles', [])
         price_history = result.get('price_history', [])
+        indicators = result.get('indicators', {})
         
         # Fetch news
         news = []
@@ -863,7 +905,7 @@ if st.session_state.analyzed:
         st.markdown("<br>", unsafe_allow_html=True)
         
         # ================================================================
-        # TABS: Chart | Analysis | News
+        # TABS: Chart | Analysis | News | Indicators
         # ================================================================
         
         tab1, tab2, tab3, tab4 = st.tabs(["Chart", "Analysis", "News", "Indicators"])
@@ -930,30 +972,36 @@ if st.session_state.analyzed:
         
         with tab2:
             if ai_result:
-                overview = ai_result.get('overview', 'N/A')
-                financials = ai_result.get('financials', 'N/A')
-                technical = ai_result.get('technical', 'N/A')
-                recommendation = ai_result.get('recommendation', 'N/A')
-                
-                st.markdown(f"""
-                <div class="analysis-card">
-                    <h3 style="font-size: 1.1rem; font-weight: 600; color: #ffffff; margin-bottom: 0.5rem;">{symbol} - Investment Analysis</h3>
-                    <hr>
-                    
-                    <p><strong style="color: #00b4ff;">Overview</strong><br>{overview}</p>
-                    
-                    <p><strong style="color: #00b4ff;">Financial Health</strong><br>{financials}</p>
-                    
-                    <p><strong style="color: #00b4ff;">Technical Position</strong><br>{technical}</p>
-                    
-                    <p><strong style="color: #00b4ff;">Recommendation</strong><br>{recommendation}</p>
-                    
-                    <hr>
-                    <p style="color: rgba(255,255,255,0.2); font-size: 0.7rem;">
-                        Analysis generated by AI  •  Data source: {data_source}
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+
+                overview = ai_result.get("overview", "N/A")
+                financials = ai_result.get("financials", "N/A")
+                technical = ai_result.get("technical", "N/A")
+                recommendation = ai_result.get("recommendation", "N/A")
+
+                st.markdown(
+                    f"### {symbol} - Investment Analysis"
+                )
+
+                st.divider()
+
+                st.markdown("**Overview**")
+                st.write(overview)
+
+                st.markdown("**Financial Health**")
+                st.write(financials)
+
+                st.markdown("**Technical Position**")
+                st.write(technical)
+
+                st.markdown("**Recommendation**")
+                st.write(recommendation)
+
+                st.divider()
+
+                st.caption(
+                    f"Analysis generated by AI • Data source: {data_source}"
+                )
+
             else:
                 st.info("AI analysis not available for this symbol")
         
@@ -972,93 +1020,91 @@ if st.session_state.analyzed:
             else:
                 st.info("No recent news available for this symbol")
         
+        with tab4:
+            if indicators:
+                st.markdown("""
+                <h3 style="color: #ffffff; font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Technical Indicators</h3>
+                """, unsafe_allow_html=True)
+                
+                # RSI
+                rsi = indicators.get('rsi')
+                if rsi is not None:
+                    rsi_status = "Oversold" if rsi < 30 else "Overbought" if rsi > 70 else "Neutral"
+                    rsi_color = "#00d4aa" if rsi < 30 else "#ff6b6b" if rsi > 70 else "#ffc107"
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">RSI (14)</div>
+                            <div class="metric-value" style="color: {rsi_color};">{rsi:.2f}</div>
+                            <div style="color: {rsi_color}; font-size: 0.8rem;">{rsi_status}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # MACD
+                macd = indicators.get('macd', {})
+                if macd:
+                    macd_value = macd.get('macd')
+                    signal = macd.get('signal')
+                    histogram = macd.get('histogram')
+                    
+                    if macd_value is not None:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("MACD", f"{macd_value:.4f}")
+                        with col2:
+                            st.metric("Signal", f"{signal:.4f}" if signal else "N/A")
+                        with col3:
+                            hist_color = "#00d4aa" if histogram and histogram > 0 else "#ff6b6b"
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-label">Histogram</div>
+                                <div class="metric-value" style="color: {hist_color};">{histogram:.4f}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                # Bollinger Bands
+                bbands = indicators.get('bollinger', {})
+                if bbands:
+                    upper = bbands.get('upper')
+                    middle = bbands.get('middle')
+                    lower = bbands.get('lower')
+                    
+                    if upper is not None and middle is not None and lower is not None:
+                        st.markdown("""
+                        <div style="margin: 0.5rem 0;">
+                            <h4 style="color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 500;">Bollinger Bands (20,2)</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-label">Upper Band</div>
+                                <div class="metric-value" style="color: #ff6b6b;">${upper:.2f}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        with col2:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-label">Middle (MA20)</div>
+                                <div class="metric-value" style="color: #ffc107;">${middle:.2f}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        with col3:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-label">Lower Band</div>
+                                <div class="metric-value" style="color: #00d4aa;">${lower:.2f}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+            else:
+                st.info("Technical indicators not available. Install ta library: pip install ta")
+        
         # Raw data expander
         with st.expander("Raw Data"):
             st.json(result)
-
-        with tab4:
-          indicators = result.get('indicators', {})
-    
-        if indicators:
-               st.markdown("""
-               <h3 style="color: #ffffff; font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Technical Indicators</h3>
-               """, unsafe_allow_html=True)
-        
-        # RSI
-        rsi = indicators.get('rsi')
-        if rsi is not None:
-            rsi_status = "Oversold" if rsi < 30 else "Overbought" if rsi > 70 else "Neutral"
-            rsi_color = "#00d4aa" if rsi < 30 else "#ff6b6b" if rsi > 70 else "#ffc107"
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">RSI (14)</div>
-                    <div class="metric-value" style="color: {rsi_color};">{rsi:.2f}</div>
-                    <div style="color: {rsi_color}; font-size: 0.8rem;">{rsi_status}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # MACD
-        macd = indicators.get('macd', {})
-        if macd:
-            macd_value = macd.get('macd')
-            signal = macd.get('signal')
-            histogram = macd.get('histogram')
-            
-            if macd_value is not None:
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("MACD", f"{macd_value:.4f}")
-                with col2:
-                    st.metric("Signal", f"{signal:.4f}" if signal else "N/A")
-                with col3:
-                    hist_color = "#00d4aa" if histogram and histogram > 0 else "#ff6b6b"
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Histogram</div>
-                        <div class="metric-value" style="color: {hist_color};">{histogram:.4f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
-        # Bollinger Bands
-        bbands = indicators.get('bollinger', {})
-        if bbands:
-            upper = bbands.get('upper')
-            middle = bbands.get('middle')
-            lower = bbands.get('lower')
-            
-            if upper is not None and middle is not None and lower is not None:
-                st.markdown("""
-                <div style="margin: 0.5rem 0;">
-                    <h4 style="color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 500;">Bollinger Bands (20,2)</h4>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Upper Band</div>
-                        <div class="metric-value" style="color: #ff6b6b;">${upper:.2f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Middle (MA20)</div>
-                        <div class="metric-value" style="color: #ffc107;">${middle:.2f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with col3:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Lower Band</div>
-                        <div class="metric-value" style="color: #00d4aa;">${lower:.2f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-          st.info("Technical indicators not available. Install pandas-ta: pip install pandas-ta")
 
 else:
     # Welcome Screen
