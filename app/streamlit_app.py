@@ -1,3 +1,4 @@
+
 """
 Market Intelligence Dashboard
 Professional Financial Analysis Platform
@@ -12,13 +13,13 @@ import os
 import re
 from datetime import datetime
 
+# Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.agentic_finance_dashboard.tools import get_stock_data, search_stock_news
+from src.agentic_finance_dashboard.tools import get_stock_data_with_indicators, search_stock_news
 from src.agentic_finance_dashboard.config import GROQ_API_KEY
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-
 # Page Configuration
 st.set_page_config(
     page_title="Market Intelligence Dashboard",
@@ -744,7 +745,7 @@ if st.session_state.analyzed:
     with st.spinner(f"Analyzing {symbol}..."):
         
         # Fetch data
-        result = get_stock_data(symbol, "1mo")
+        result = get_stock_data_with_indicators(symbol, "1mo")
         data_source = "Global Markets"
         
         if "error" in result:
@@ -865,7 +866,7 @@ if st.session_state.analyzed:
         # TABS: Chart | Analysis | News
         # ================================================================
         
-        tab1, tab2, tab3 = st.tabs(["Chart", "Analysis", "News"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Chart", "Analysis", "News", "Indicators"])
         
         with tab1:
             chart_shown = False
@@ -974,6 +975,90 @@ if st.session_state.analyzed:
         # Raw data expander
         with st.expander("Raw Data"):
             st.json(result)
+
+        with tab4:
+          indicators = result.get('indicators', {})
+    
+        if indicators:
+               st.markdown("""
+               <h3 style="color: #ffffff; font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Technical Indicators</h3>
+               """, unsafe_allow_html=True)
+        
+        # RSI
+        rsi = indicators.get('rsi')
+        if rsi is not None:
+            rsi_status = "Oversold" if rsi < 30 else "Overbought" if rsi > 70 else "Neutral"
+            rsi_color = "#00d4aa" if rsi < 30 else "#ff6b6b" if rsi > 70 else "#ffc107"
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">RSI (14)</div>
+                    <div class="metric-value" style="color: {rsi_color};">{rsi:.2f}</div>
+                    <div style="color: {rsi_color}; font-size: 0.8rem;">{rsi_status}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # MACD
+        macd = indicators.get('macd', {})
+        if macd:
+            macd_value = macd.get('macd')
+            signal = macd.get('signal')
+            histogram = macd.get('histogram')
+            
+            if macd_value is not None:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("MACD", f"{macd_value:.4f}")
+                with col2:
+                    st.metric("Signal", f"{signal:.4f}" if signal else "N/A")
+                with col3:
+                    hist_color = "#00d4aa" if histogram and histogram > 0 else "#ff6b6b"
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Histogram</div>
+                        <div class="metric-value" style="color: {hist_color};">{histogram:.4f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Bollinger Bands
+        bbands = indicators.get('bollinger', {})
+        if bbands:
+            upper = bbands.get('upper')
+            middle = bbands.get('middle')
+            lower = bbands.get('lower')
+            
+            if upper is not None and middle is not None and lower is not None:
+                st.markdown("""
+                <div style="margin: 0.5rem 0;">
+                    <h4 style="color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 500;">Bollinger Bands (20,2)</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Upper Band</div>
+                        <div class="metric-value" style="color: #ff6b6b;">${upper:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Middle (MA20)</div>
+                        <div class="metric-value" style="color: #ffc107;">${middle:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-label">Lower Band</div>
+                        <div class="metric-value" style="color: #00d4aa;">${lower:.2f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+          st.info("Technical indicators not available. Install pandas-ta: pip install pandas-ta")
 
 else:
     # Welcome Screen
