@@ -1,6 +1,6 @@
 """
 Market Intelligence Dashboard
-Professional Financial Analysis Platform
+Professional Multi-Page Dashboard
 """
 
 import streamlit as st
@@ -15,6 +15,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.agentic_finance_dashboard.tools import get_stock_data, search_stock_news
+from src.agentic_finance_dashboard.psx_tools import get_psx_data, PSX_SYMBOLS
 from src.agentic_finance_dashboard.config import GROQ_API_KEY
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
@@ -30,8 +31,12 @@ st.set_page_config(
 # Initialize session state
 if 'symbol' not in st.session_state:
     st.session_state.symbol = "AAPL"
+if 'market' not in st.session_state:
+    st.session_state.market = "Global"
 if 'analyzed' not in st.session_state:
     st.session_state.analyzed = False
+if 'page' not in st.session_state:
+    st.session_state.page = "Analysis"
 
 # CSS - Professional Dashboard Design
 st.markdown("""
@@ -47,16 +52,9 @@ st.markdown("""
     }
     
     /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background: rgba(15, 15, 30, 0.98);
+    .css-1d391kg {
+        background: rgba(15, 15, 30, 0.95);
         border-right: 1px solid rgba(255,255,255,0.05);
-    }
-    
-    section[data-testid="stSidebar"] .stSelectbox > div > div {
-        background: rgba(255,255,255,0.05) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 8px !important;
-        color: #ffffff !important;
     }
     
     /* Header */
@@ -104,8 +102,6 @@ st.markdown("""
         padding: 1rem 1.2rem;
         border: 1px solid rgba(255,255,255,0.05);
         transition: all 0.3s ease;
-        animation: slideUp 0.5s ease;
-        animation-fill-mode: both;
     }
     
     .metric-card:hover {
@@ -181,7 +177,6 @@ st.markdown("""
         border-radius: 10px;
         padding: 1.5rem;
         border: 1px solid rgba(255,255,255,0.06);
-        animation: slideUp 0.6s ease;
         line-height: 1.8;
         color: rgba(255,255,255,0.85);
     }
@@ -202,8 +197,6 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.05);
         transition: all 0.3s ease;
         margin-bottom: 0.5rem;
-        animation: slideUp 0.5s ease;
-        animation-fill-mode: both;
     }
     
     .news-card:hover {
@@ -292,7 +285,6 @@ st.markdown("""
         border-radius: 8px !important;
         color: #ffffff !important;
         padding: 0.5rem 1rem !important;
-        font-size: 1rem !important;
     }
     
     .stTextInput > div > div > input:focus {
@@ -300,11 +292,11 @@ st.markdown("""
         box-shadow: 0 0 0 2px rgba(0, 180, 255, 0.15) !important;
     }
     
-    /* Expander */
-    .streamlit-expanderHeader {
-        color: rgba(255,255,255,0.5) !important;
-        font-weight: 500 !important;
-        font-size: 0.85rem !important;
+    .stSelectbox > div > div {
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 8px !important;
+        color: #ffffff !important;
     }
     
     /* Footer */
@@ -317,75 +309,9 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Animations */
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    @keyframes slideUp {
-        from { 
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to { 
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Loading spinner */
+    /* Loading */
     .stSpinner > div {
         border-color: #00b4ff !important;
-    }
-    
-    /* Welcome Screen */
-    .welcome-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 4rem 2rem;
-        text-align: center;
-    }
-    
-    .welcome-box {
-        background: rgba(255,255,255,0.02);
-        border-radius: 16px;
-        padding: 3rem;
-        max-width: 600px;
-        border: 1px solid rgba(255,255,255,0.05);
-        animation: fadeIn 0.8s ease;
-    }
-    
-    .welcome-title {
-        color: rgba(255,255,255,0.6);
-        font-size: 2rem;
-        font-weight: 300;
-        margin: 0;
-    }
-    
-    .welcome-title-main {
-        color: #ffffff;
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin: 0.2rem 0;
-    }
-    
-    .welcome-text {
-        color: rgba(255,255,255,0.4);
-        font-size: 1rem;
-        margin: 1rem 0;
-    }
-    
-    .welcome-tag {
-        background: rgba(255,255,255,0.05);
-        padding: 0.3rem 0.8rem;
-        border-radius: 4px;
-        color: rgba(255,255,255,0.3);
-        font-size: 0.8rem;
-        display: inline-block;
-        margin: 0.2rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -539,7 +465,7 @@ def create_candlestick_chart(candles, symbol):
 # AI Analysis Function
 # ============================================================================
 
-def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
+def analyze_stock_ai(symbol: str, stock_data: dict, news: list, is_psx: bool = False):
     if not stock_data or "error" in stock_data:
         return None
     
@@ -547,7 +473,10 @@ def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
     
     price = metrics.get('current_price', 'N/A')
     if isinstance(price, (int, float)):
-        price_str = f"${price:.2f}"
+        if is_psx:
+            price_str = f"{price:.2f} PKR"
+        else:
+            price_str = f"${price:.2f}"
     else:
         price_str = str(price)
     
@@ -559,6 +488,8 @@ def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
             market_cap_str = f"${market_cap/1e9:.2f}B"
         else:
             market_cap_str = f"${market_cap/1e6:.2f}M"
+        if is_psx:
+            market_cap_str = market_cap_str.replace("$", "")
     else:
         market_cap_str = str(market_cap)
     
@@ -567,10 +498,13 @@ def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
         titles = [n.get('title', '') for n in news[:3] if n.get('title')]
         news_summary = " | ".join(titles) if titles else "No recent news"
     
+    market_type = "Pakistan Stock Exchange" if is_psx else "Global Market"
+    
     prompt = f"""
 You are a professional financial analyst. Provide a concise investment analysis.
 
 STOCK: {symbol}
+MARKET: {market_type}
 CURRENT PRICE: {price_str}
 MARKET CAP: {market_cap_str}
 P/E RATIO: {metrics.get('pe_ratio', 'N/A')}
@@ -637,7 +571,7 @@ RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
 
 with st.sidebar:
     st.markdown("""
-    <div style="padding: 0.5rem 0 0.5rem 0;">
+    <div style="padding: 1rem 0 0.5rem 0;">
         <h2 style="color: #ffffff; font-size: 1.2rem; font-weight: 600; margin: 0;">Market Intelligence</h2>
         <p style="color: rgba(255,255,255,0.3); font-size: 0.7rem; margin: 0;">AI-Powered Analysis Platform</p>
     </div>
@@ -646,11 +580,20 @@ with st.sidebar:
     st.markdown("---")
     
     # Symbol Input
-    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.2rem;">Symbol</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Symbol</p>', unsafe_allow_html=True)
     symbol_input = st.text_input(
         "",
         value=st.session_state.symbol,
         placeholder="Enter symbol...",
+        label_visibility="collapsed"
+    )
+    
+    # Market Select
+    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">Market</p>', unsafe_allow_html=True)
+    market_input = st.selectbox(
+        "",
+        ["Global", "Pakistan"],
+        index=0 if st.session_state.market == "Global" else 1,
         label_visibility="collapsed"
     )
     
@@ -659,16 +602,18 @@ with st.sidebar:
     
     if analyze_clicked:
         st.session_state.symbol = symbol_input.upper().strip()
+        st.session_state.market = market_input
         st.session_state.analyzed = True
         st.rerun()
     
     st.markdown("---")
     
     # Quick Picks
-    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;">Quick Picks</p>', unsafe_allow_html=True)
+    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Quick Picks</p>', unsafe_allow_html=True)
     
-    quick_symbols = ["AAPL", "MSFT", "GOOGL", "TSLA", "NVDA", "AMZN", "META", "NFLX"]
+    quick_symbols = ["AAPL", "MSFT", "GOOGL", "TSLA", "UBL", "OGDC", "LUCK", "KSE100"]
     
+    # Split into two columns for better layout
     col1, col2 = st.columns(2)
     for i, qs in enumerate(quick_symbols):
         if i < 4:
@@ -687,12 +632,12 @@ with st.sidebar:
     st.markdown("---")
     
     # System Status
-    st.markdown(f"""
+    st.markdown("""
     <div style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 0.8rem 1rem; border: 1px solid rgba(255,255,255,0.05);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">System Status</span>
             <span style="color: #00d4aa; font-size: 0.7rem;">
-                <span style="display: inline-block; width: 6px; height: 6px; background: #00d4aa; border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite;"></span>
+                <span class="status-dot" style="display: inline-block; width: 6px; height: 6px; background: #00d4aa; border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite;"></span>
                 Online
             </span>
         </div>
@@ -706,17 +651,17 @@ with st.sidebar:
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
             <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">Last Updated</span>
-            <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">{datetime.now().strftime("%H:%M")}</span>
+            <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">{}</span>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """.format(datetime.now().strftime("%H:%M")), unsafe_allow_html=True)
 
 # ============================================================================
 # MAIN CONTENT
 # ============================================================================
 
 # Header
-st.markdown(f"""
+st.markdown("""
 <div class="dashboard-header">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
         <div>
@@ -728,11 +673,11 @@ st.markdown(f"""
                 <span class="status-dot"></span> Live
             </span>
             <span style="color: rgba(255,255,255,0.2);">|</span>
-            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">{datetime.now().strftime("%d %b %Y")} • {datetime.now().strftime("%H:%M")} UTC</span>
+            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">{} • {} UTC</span>
         </div>
     </div>
 </div>
-""", unsafe_allow_html=True)
+""".format(datetime.now().strftime("%d %b %Y"), datetime.now().strftime("%H:%M")), unsafe_allow_html=True)
 
 # ============================================================================
 # Analysis Execution
@@ -740,12 +685,17 @@ st.markdown(f"""
 
 if st.session_state.analyzed:
     symbol = st.session_state.symbol
+    is_psx = (st.session_state.market == "Pakistan") or (symbol in PSX_SYMBOLS)
     
     with st.spinner(f"Analyzing {symbol}..."):
         
         # Fetch data
-        result = get_stock_data(symbol, "1mo")
-        data_source = "Global Markets"
+        if is_psx:
+            result = get_psx_data(symbol, "1mo")
+            data_source = "Pakistan Stock Exchange"
+        else:
+            result = get_stock_data(symbol, "1mo")
+            data_source = "Global Markets"
         
         if "error" in result:
             st.error(f"Data error: {result['error']}")
@@ -763,7 +713,7 @@ if st.session_state.analyzed:
             print(f"News error: {e}")
         
         # AI Analysis
-        ai_result = analyze_stock_ai(symbol, result, news)
+        ai_result = analyze_stock_ai(symbol, result, news, is_psx)
         
         # ================================================================
         # METRICS ROW
@@ -781,7 +731,10 @@ if st.session_state.analyzed:
         # Price
         price = metrics.get('current_price', 'N/A')
         if isinstance(price, (int, float)):
-            price_display = f"${price:.2f}"
+            if is_psx:
+                price_display = f"{price:.2f} PKR"
+            else:
+                price_display = f"${price:.2f}"
         else:
             price_display = str(price)
         
@@ -811,11 +764,15 @@ if st.session_state.analyzed:
             mc = metrics.get('market_cap', 'N/A')
             if isinstance(mc, (int, float)):
                 if mc > 1e12:
-                    mc_display = f"${mc/1e12:.2f}T"
+                    mc_display = f"{mc/1e12:.2f}T"
                 elif mc > 1e9:
-                    mc_display = f"${mc/1e9:.2f}B"
+                    mc_display = f"{mc/1e9:.2f}B"
                 else:
-                    mc_display = f"${mc/1e6:.2f}M"
+                    mc_display = f"{mc/1e6:.2f}M"
+                if is_psx:
+                    mc_display = mc_display.replace("$", "") + " PKR"
+                else:
+                    mc_display = "$" + mc_display
             else:
                 mc_display = str(mc)
             
@@ -976,28 +933,25 @@ if st.session_state.analyzed:
             st.json(result)
 
 else:
-    # Welcome Screen
+    # Welcome Message
     st.markdown("""
-    <div class="welcome-container">
-        <div class="welcome-box">
-            <h1 class="welcome-title">Welcome to</h1>
-            <h1 class="welcome-title-main">Market Intelligence</h1>
-            <p class="welcome-text">
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; text-align: center;">
+        <div style="background: rgba(255,255,255,0.02); border-radius: 16px; padding: 3rem; max-width: 600px; border: 1px solid rgba(255,255,255,0.05);">
+            <h1 style="color: rgba(255,255,255,0.6); font-size: 2rem; font-weight: 300; margin: 0;">Welcome to</h1>
+            <h1 style="color: #ffffff; font-size: 2.5rem; font-weight: 700; margin: 0.2rem 0;">Market Intelligence</h1>
+            <p style="color: rgba(255,255,255,0.4); font-size: 1rem; margin: 1rem 0;">
                 Enter a stock symbol in the sidebar to get started.
             </p>
-            <div style="display: flex; gap: 0.3rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
-                <span class="welcome-tag">AAPL</span>
-                <span class="welcome-tag">MSFT</span>
-                <span class="welcome-tag">GOOGL</span>
-                <span class="welcome-tag">TSLA</span>
-                <span class="welcome-tag">NVDA</span>
-                <span class="welcome-tag">AMZN</span>
-                <span class="welcome-tag">META</span>
-                <span class="welcome-tag">NFLX</span>
+            <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
+                <span style="background: rgba(255,255,255,0.05); padding: 0.3rem 0.8rem; border-radius: 4px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">AAPL</span>
+                <span style="background: rgba(255,255,255,0.05); padding: 0.3rem 0.8rem; border-radius: 4px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">MSFT</span>
+                <span style="background: rgba(255,255,255,0.05); padding: 0.3rem 0.8rem; border-radius: 4px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">GOOGL</span>
+                <span style="background: rgba(255,255,255,0.05); padding: 0.3rem 0.8rem; border-radius: 4px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">TSLA</span>
+                <span style="background: rgba(255,255,255,0.05); padding: 0.3rem 0.8rem; border-radius: 4px; color: rgba(255,255,255,0.3); font-size: 0.8rem;">UBL</span>
             </div>
             <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
                 <p style="color: rgba(255,255,255,0.15); font-size: 0.7rem;">
-                    Powered by Groq AI • LangChain • Yahoo Finance
+                    Powered by Groq AI • LangChain • Yahoo Finance • PSX
                 </p>
             </div>
         </div>
@@ -1010,6 +964,6 @@ else:
 
 st.markdown("""
 <div class="footer">
-    Market Intelligence Platform  •  AI-Powered Analysis  •  Real-Time Data  •  Global Markets
+    Market Intelligence Platform  •  AI-Powered Analysis  •  Real-Time Data  •  Pakistan & Global Markets
 </div>
 """, unsafe_allow_html=True)
