@@ -15,7 +15,7 @@ from datetime import datetime
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.agentic_finance_dashboard.tools import get_stock_data_with_indicators, search_stock_news
+from src.agentic_finance_dashboard.tools import get_stock_data_with_indicators, search_stock_news, get_stock_data
 from src.agentic_finance_dashboard.config import GROQ_API_KEY
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
@@ -33,6 +33,8 @@ if 'symbol' not in st.session_state:
     st.session_state.symbol = "AAPL"
 if 'analyzed' not in st.session_state:
     st.session_state.analyzed = False
+if 'watchlist' not in st.session_state:
+    st.session_state.watchlist = []
 
 # CSS - Professional Dashboard Design
 st.markdown("""
@@ -47,20 +49,11 @@ st.markdown("""
         background: #0a0a12;
     }
     
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background: rgba(15, 15, 30, 0.98);
         border-right: 1px solid rgba(255,255,255,0.05);
     }
     
-    section[data-testid="stSidebar"] .stSelectbox > div > div {
-        background: rgba(255,255,255,0.05) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 8px !important;
-        color: #ffffff !important;
-    }
-    
-    /* Header */
     .dashboard-header {
         background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
         padding: 1.2rem 2rem;
@@ -98,7 +91,6 @@ st.markdown("""
         50% { opacity: 0.3; }
     }
     
-    /* Metric Cards */
     .metric-card {
         background: rgba(255,255,255,0.02);
         border-radius: 10px;
@@ -142,7 +134,6 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Recommendation Badges */
     .badge-buy {
         display: inline-block;
         background: rgba(0, 212, 170, 0.15);
@@ -176,26 +167,6 @@ st.markdown("""
         border: 1px solid rgba(255, 107, 107, 0.2);
     }
     
-    /* Analysis Card */
-    .analysis-card {
-        background: rgba(255,255,255,0.02);
-        border-radius: 10px;
-        padding: 1.5rem;
-        border: 1px solid rgba(255,255,255,0.06);
-        animation: slideUp 0.6s ease;
-        line-height: 1.8;
-        color: rgba(255,255,255,0.85);
-    }
-    
-    .analysis-card strong {
-        color: #00b4ff;
-    }
-    
-    .analysis-card hr {
-        border-color: rgba(255,255,255,0.06);
-    }
-    
-    /* News Cards */
     .news-card {
         background: rgba(255,255,255,0.02);
         border-radius: 8px;
@@ -203,13 +174,10 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.05);
         transition: all 0.3s ease;
         margin-bottom: 0.5rem;
-        animation: slideUp 0.5s ease;
-        animation-fill-mode: both;
     }
     
     .news-card:hover {
         background: rgba(255,255,255,0.04);
-        border-color: rgba(255,255,255,0.08);
     }
     
     .news-title {
@@ -229,7 +197,6 @@ st.markdown("""
         font-size: 0.7rem;
     }
     
-    /* Buttons */
     .stButton > button {
         background: linear-gradient(135deg, #00b4ff 0%, #0077ff 100%) !important;
         color: #ffffff !important;
@@ -246,26 +213,6 @@ st.markdown("""
         box-shadow: 0 8px 30px rgba(0, 119, 255, 0.3);
     }
     
-    /* Quick buttons in sidebar */
-    .quick-btn {
-        background: rgba(255,255,255,0.05) !important;
-        color: rgba(255,255,255,0.7) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 6px !important;
-        padding: 0.3rem 0 !important;
-        font-size: 0.8rem !important;
-        font-weight: 500 !important;
-        transition: all 0.3s ease !important;
-        width: 100% !important;
-    }
-    
-    .quick-btn:hover {
-        background: rgba(255,255,255,0.1) !important;
-        color: #ffffff !important;
-        border-color: rgba(0, 180, 255, 0.3) !important;
-    }
-    
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
         background: rgba(255,255,255,0.02);
@@ -286,29 +233,14 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Inputs */
     .stTextInput > div > div > input {
         background: rgba(255,255,255,0.05) !important;
         border: 1px solid rgba(255,255,255,0.08) !important;
         border-radius: 8px !important;
         color: #ffffff !important;
         padding: 0.5rem 1rem !important;
-        font-size: 1rem !important;
     }
     
-    .stTextInput > div > div > input:focus {
-        border-color: #00b4ff !important;
-        box-shadow: 0 0 0 2px rgba(0, 180, 255, 0.15) !important;
-    }
-    
-    /* Expander */
-    .streamlit-expanderHeader {
-        color: rgba(255,255,255,0.5) !important;
-        font-weight: 500 !important;
-        font-size: 0.85rem !important;
-    }
-    
-    /* Footer */
     .footer {
         margin-top: 2.5rem;
         padding: 1rem 0;
@@ -318,7 +250,6 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Animations */
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -335,12 +266,6 @@ st.markdown("""
         }
     }
     
-    /* Loading spinner */
-    .stSpinner > div {
-        border-color: #00b4ff !important;
-    }
-    
-    /* Welcome Screen */
     .welcome-container {
         display: flex;
         flex-direction: column;
@@ -356,7 +281,6 @@ st.markdown("""
         padding: 3rem;
         max-width: 600px;
         border: 1px solid rgba(255,255,255,0.05);
-        animation: fadeIn 0.8s ease;
     }
     
     .welcome-title {
@@ -464,18 +388,6 @@ def create_candlestick_chart(candles, symbol):
                 row=1, col=1
             )
         
-        if len(df) >= 50:
-            df['MA50'] = df['close'].rolling(window=50).mean()
-            fig.add_trace(
-                go.Scatter(
-                    x=df['date'],
-                    y=df['MA50'],
-                    name="MA50",
-                    line=dict(color="rgba(255, 193, 7, 0.5)", width=1.5),
-                ),
-                row=1, col=1
-            )
-        
         colors = ['#00d4aa' if close >= open_ else '#ff6b6b' 
                   for close, open_ in zip(df['close'], df['open'])]
         
@@ -510,25 +422,8 @@ def create_candlestick_chart(candles, symbol):
             margin=dict(l=20, r=20, t=40, b=20),
         )
         
-        fig.update_xaxes(
-            gridcolor="rgba(255,255,255,0.04)",
-            tickfont=dict(color="rgba(255,255,255,0.3)", size=10),
-            showgrid=True,
-        )
-        
-        fig.update_yaxes(
-            gridcolor="rgba(255,255,255,0.04)",
-            tickfont=dict(color="rgba(255,255,255,0.3)", size=10),
-            showgrid=True,
-            row=1, col=1
-        )
-        
-        fig.update_yaxes(
-            gridcolor="rgba(255,255,255,0.04)",
-            tickfont=dict(color="rgba(255,255,255,0.3)", size=10),
-            showgrid=True,
-            row=2, col=1
-        )
+        fig.update_xaxes(gridcolor="rgba(255,255,255,0.04)")
+        fig.update_yaxes(gridcolor="rgba(255,255,255,0.04)")
         
         return fig
         
@@ -537,7 +432,7 @@ def create_candlestick_chart(candles, symbol):
         return None
 
 # ============================================================================
-# AI Analysis Function - Clean, No HTML
+# AI Analysis Function
 # ============================================================================
 
 def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
@@ -547,10 +442,7 @@ def analyze_stock_ai(symbol: str, stock_data: dict, news: list):
     metrics = stock_data.get('metrics', {})
     
     price = metrics.get('current_price', 'N/A')
-    if isinstance(price, (int, float)):
-        price_str = f"${price:.2f}"
-    else:
-        price_str = str(price)
+    price_str = f"${price:.2f}" if isinstance(price, (int, float)) else str(price)
     
     market_cap = metrics.get('market_cap', 'N/A')
     if isinstance(market_cap, (int, float)):
@@ -582,20 +474,13 @@ INDUSTRY: {metrics.get('industry', 'N/A')}
 LATEST NEWS: {news_summary}
 
 CRITICAL INSTRUCTION: Your response MUST be in plain text format with NO HTML tags.
-DO NOT use: <p>, <strong>, <br>, <h1>, <h2>, <div>, <span>, <b>, <i>, or any other HTML tags.
-ONLY use plain text with line breaks.
+DO NOT use any HTML tags. ONLY use plain text.
 
-Format your response EXACTLY like this (plain text only):
+Format your response EXACTLY like this:
 OVERVIEW: [2-3 sentences]
 FINANCIALS: [2-3 sentences]
 TECHNICAL: [1-2 sentences]
 RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
-
-Example of correct format:
-OVERVIEW: Apple Inc. is a leading technology company...
-FINANCIALS: With a P/E ratio of 35.79...
-TECHNICAL: The stock is trading at $312.42...
-RECOMMENDATION: HOLD - The stock is near its 52-week high...
 """
     
     llm = get_llm()
@@ -606,9 +491,9 @@ RECOMMENDATION: HOLD - The stock is near its 52-week high...
         response = llm.invoke([HumanMessage(content=prompt)])
         content = response.content
         
-        # Strong HTML cleaning
-        content = re.sub(r'<[^>]+>', '', content)  # Remove all HTML tags
-        content = re.sub(r'&[a-z]+;', '', content)  # Remove HTML entities
+        # Clean HTML tags
+        content = re.sub(r'<[^>]+>', '', content)
+        content = re.sub(r'&[a-z]+;', '', content)
         
         overview = ""
         financials = ""
@@ -623,13 +508,13 @@ RECOMMENDATION: HOLD - The stock is near its 52-week high...
             
             upper_line = line.upper()
             if upper_line.startswith("OVERVIEW:"):
-                overview = line.replace("OVERVIEW:", "").strip()
+                overview = line.replace("OVERVIEW:", "").replace("overview:", "").strip()
             elif upper_line.startswith("FINANCIALS:"):
-                financials = line.replace("FINANCIALS:", "").strip()
+                financials = line.replace("FINANCIALS:", "").replace("financials:", "").strip()
             elif upper_line.startswith("TECHNICAL:"):
-                technical = line.replace("TECHNICAL:", "").strip()
+                technical = line.replace("TECHNICAL:", "").replace("technical:", "").strip()
             elif upper_line.startswith("RECOMMENDATION:"):
-                rec_text = line.replace("RECOMMENDATION:", "").strip()
+                rec_text = line.replace("RECOMMENDATION:", "").replace("recommendation:", "").strip()
                 if "BUY" in rec_text.upper():
                     rec_type = "BUY"
                 elif "SELL" in rec_text.upper():
@@ -638,27 +523,7 @@ RECOMMENDATION: HOLD - The stock is near its 52-week high...
                     rec_type = "HOLD"
                 recommendation = rec_text
         
-        # If parsing failed, try to extract from full content
-        if not overview and not financials and not technical and not recommendation:
-            lines = [l.strip() for l in content.split('\n') if l.strip()]
-            for line in lines:
-                if "OVERVIEW" in line.upper():
-                    overview = line.split(":", 1)[-1].strip() if ":" in line else line
-                elif "FINANCIAL" in line.upper():
-                    financials = line.split(":", 1)[-1].strip() if ":" in line else line
-                elif "TECHNICAL" in line.upper():
-                    technical = line.split(":", 1)[-1].strip() if ":" in line else line
-                elif "RECOMMENDATION" in line.upper():
-                    rec_text = line.split(":", 1)[-1].strip() if ":" in line else line
-                    if "BUY" in rec_text.upper():
-                        rec_type = "BUY"
-                    elif "SELL" in rec_text.upper():
-                        rec_type = "SELL"
-                    else:
-                        rec_type = "HOLD"
-                    recommendation = rec_text
-        
-        # Fallback: if still empty, use whole content
+        # Fallback if parsing failed
         if not overview and not financials and not technical and not recommendation:
             overview = content[:300]
         
@@ -728,18 +593,86 @@ with st.sidebar:
     
     st.markdown("---")
     
+    # Watchlist
+    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;">Watchlist</p>', unsafe_allow_html=True)
+    
+    if st.session_state.analyzed:
+        if st.button("Add to Watchlist", use_container_width=True):
+            if st.session_state.symbol not in st.session_state.watchlist:
+                st.session_state.watchlist.append(st.session_state.symbol)
+                st.success(f"{st.session_state.symbol} added!")
+    
+    if st.session_state.watchlist:
+        for ws in st.session_state.watchlist:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if st.button(ws, key=f"watch_{ws}", use_container_width=True):
+                    st.session_state.symbol = ws
+                    st.session_state.analyzed = True
+                    st.rerun()
+            with col2:
+                if st.button("X", key=f"remove_{ws}"):
+                    st.session_state.watchlist.remove(ws)
+                    st.rerun()
+    else:
+        st.caption("No stocks in watchlist")
+    
+    st.markdown("---")
+    
+    # Comparison Mode
+    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;">Compare Mode</p>', unsafe_allow_html=True)
+    
+    compare_mode = st.checkbox("Enable Comparison", value=False)
+    compare_symbols = ""
+    
+    if compare_mode:
+        compare_symbols = st.text_input(
+            "Compare with",
+            value="MSFT, GOOGL",
+            placeholder="e.g., MSFT, GOOGL"
+        )
+    
+    st.markdown("---")
+    
+    # Theme Toggle
+    st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;">Theme</p>', unsafe_allow_html=True)
+    
+    theme = st.radio(
+        "Theme",
+        ["Dark", "Light"],
+        index=0,
+        label_visibility="collapsed",
+        horizontal=True
+    )
+    
+    if theme == "Light":
+        st.markdown("""
+        <style>
+            .stApp { background: #f5f5f7 !important; }
+            .metric-card { background: #ffffff !important; border-color: #e0e0e0 !important; }
+            .metric-value { color: #1a1a2e !important; }
+            .metric-label { color: #666 !important; }
+            .dashboard-header { background: #ffffff !important; }
+            .dashboard-title { color: #1a1a2e !important; }
+            .news-card { background: #ffffff !important; }
+            .news-title { color: #1a1a2e !important; }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
     # System Status
     st.markdown(f"""
     <div style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 0.8rem 1rem; border: 1px solid rgba(255,255,255,0.05);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">System Status</span>
+            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">Status</span>
             <span style="color: #00d4aa; font-size: 0.7rem;">
-                <span style="display: inline-block; width: 6px; height: 6px; background: #00d4aa; border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite;"></span>
+                <span style="display: inline-block; width: 6px; height: 6px; background: #00d4aa; border-radius: 50%; margin-right: 4px;"></span>
                 Online
             </span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
-            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">Data Source</span>
+            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">Data</span>
             <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">Yahoo Finance</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
@@ -747,7 +680,7 @@ with st.sidebar:
             <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">Groq Qwen 27B</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
-            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">Last Updated</span>
+            <span style="color: rgba(255,255,255,0.3); font-size: 0.7rem;">Updated</span>
             <span style="color: rgba(255,255,255,0.5); font-size: 0.7rem;">{datetime.now().strftime("%H:%M")}</span>
         </div>
     </div>
@@ -823,10 +756,7 @@ if st.session_state.analyzed:
         
         # Price
         price = metrics.get('current_price', 'N/A')
-        if isinstance(price, (int, float)):
-            price_display = f"${price:.2f}"
-        else:
-            price_display = str(price)
+        price_display = f"${price:.2f}" if isinstance(price, (int, float)) else str(price)
         
         change = metrics.get('change', 0)
         change_pct = metrics.get('change_percent', 0)
@@ -853,15 +783,9 @@ if st.session_state.analyzed:
         with col3:
             mc = metrics.get('market_cap', 'N/A')
             if isinstance(mc, (int, float)):
-                if mc > 1e12:
-                    mc_display = f"${mc/1e12:.2f}T"
-                elif mc > 1e9:
-                    mc_display = f"${mc/1e9:.2f}B"
-                else:
-                    mc_display = f"${mc/1e6:.2f}M"
+                mc_display = f"${mc/1e12:.2f}T" if mc > 1e12 else f"${mc/1e9:.2f}B" if mc > 1e9 else f"${mc/1e6:.2f}M"
             else:
                 mc_display = str(mc)
-            
             st.markdown(f"""
             <div class="metric-card">
                 <div class="metric-label">Market Cap</div>
@@ -872,17 +796,8 @@ if st.session_state.analyzed:
         with col4:
             high = metrics.get('52_week_high', 'N/A')
             low = metrics.get('52_week_low', 'N/A')
-            
-            if isinstance(high, (int, float)):
-                high_display = f"{high:.2f}"
-            else:
-                high_display = str(high)
-            
-            if isinstance(low, (int, float)):
-                low_display = f"{low:.2f}"
-            else:
-                low_display = str(low)
-            
+            high_display = f"{high:.2f}" if isinstance(high, (int, float)) else str(high)
+            low_display = f"{low:.2f}" if isinstance(low, (int, float)) else str(low)
             st.markdown(f"""
             <div class="metric-card">
                 <div class="metric-label">52-Week Range</div>
@@ -905,7 +820,92 @@ if st.session_state.analyzed:
         st.markdown("<br>", unsafe_allow_html=True)
         
         # ================================================================
-        # TABS: Chart | Analysis | News | Indicators
+        # COMPARISON SECTION (if enabled)
+        # ================================================================
+        
+        if compare_mode and compare_symbols:
+            compare_list = [s.strip().upper() for s in compare_symbols.split(",") if s.strip()]
+            
+            if compare_list:
+                st.markdown("---")
+                st.markdown(f"### Comparison: {symbol} vs {', '.join(compare_list)}")
+                
+                compare_data = {}
+                for comp_symbol in compare_list[:3]:
+                    comp_result = get_stock_data(comp_symbol, "1mo")
+                    if "error" not in comp_result:
+                        compare_data[comp_symbol] = comp_result
+                
+                if compare_data:
+                    # Comparison Chart
+                    fig = go.Figure()
+                    
+                    if candles:
+                        df_main = pd.DataFrame(candles)
+                        df_main['date'] = pd.to_datetime(df_main['date'])
+                        base = df_main['close'].iloc[0]
+                        df_main['normalized'] = (df_main['close'] / base) * 100
+                        
+                        fig.add_trace(go.Scatter(
+                            x=df_main['date'],
+                            y=df_main['normalized'],
+                            mode='lines',
+                            name=symbol,
+                            line=dict(color='#00b4ff', width=2)
+                        ))
+                    
+                    colors = ['#00d4aa', '#ffc107', '#ff6b6b']
+                    for i, (comp_symbol, comp_result) in enumerate(compare_data.items()):
+                        comp_candles = comp_result.get('candles', [])
+                        if comp_candles:
+                            df_comp = pd.DataFrame(comp_candles)
+                            df_comp['date'] = pd.to_datetime(df_comp['date'])
+                            base = df_comp['close'].iloc[0]
+                            df_comp['normalized'] = (df_comp['close'] / base) * 100
+                            
+                            fig.add_trace(go.Scatter(
+                                x=df_comp['date'],
+                                y=df_comp['normalized'],
+                                mode='lines',
+                                name=comp_symbol,
+                                line=dict(color=colors[i % len(colors)], width=2)
+                            ))
+                    
+                    fig.update_layout(
+                        template="plotly_dark",
+                        height=400,
+                        title="Normalized Performance (Base = 100)",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=20, r=20, t=40, b=20),
+                        xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
+                        yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Comparison Table
+                    comparison_data = [{
+                        "Symbol": symbol,
+                        "Price": f"${metrics.get('current_price', 0):.2f}" if isinstance(metrics.get('current_price'), (int, float)) else "N/A",
+                        "Change": f"{metrics.get('change_percent', 0):+.2f}%",
+                        "P/E": metrics.get('pe_ratio', 'N/A'),
+                        "Market Cap": f"${metrics.get('market_cap', 0)/1e9:.2f}B" if isinstance(metrics.get('market_cap'), (int, float)) else "N/A",
+                    }]
+                    
+                    for comp_symbol, comp_result in compare_data.items():
+                        comp_metrics = comp_result.get('metrics', {})
+                        comparison_data.append({
+                            "Symbol": comp_symbol,
+                            "Price": f"${comp_metrics.get('current_price', 0):.2f}" if isinstance(comp_metrics.get('current_price'), (int, float)) else "N/A",
+                            "Change": f"{comp_metrics.get('change_percent', 0):+.2f}%",
+                            "P/E": comp_metrics.get('pe_ratio', 'N/A'),
+                            "Market Cap": f"${comp_metrics.get('market_cap', 0)/1e9:.2f}B" if isinstance(comp_metrics.get('market_cap'), (int, float)) else "N/A",
+                        })
+                    
+                    st.dataframe(pd.DataFrame(comparison_data), use_container_width=True, hide_index=True)
+        
+        # ================================================================
+        # TABS
         # ================================================================
         
         tab1, tab2, tab3, tab4 = st.tabs(["Chart", "Analysis", "News", "Indicators"])
@@ -919,50 +919,19 @@ if st.session_state.analyzed:
                     st.plotly_chart(fig, use_container_width=True)
                     chart_shown = True
             
-            if not chart_shown and candles and len(candles) > 1:
-                df = pd.DataFrame(candles)
-                df['date'] = pd.to_datetime(df['date'])
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=df['date'],
-                    y=df['close'],
-                    mode='lines',
-                    name='Price',
-                    line=dict(color='#00b4ff', width=2)
-                ))
-                fig.update_layout(
-                    template="plotly_dark",
-                    height=400,
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-                    yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                chart_shown = True
-            
             if not chart_shown and price_history and len(price_history) > 1:
                 df = pd.DataFrame(price_history)
                 date_col = 'Date' if 'Date' in df.columns else 'date'
                 price_col = 'Close' if 'Close' in df.columns else 'close'
                 df[date_col] = pd.to_datetime(df[date_col])
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=df[date_col],
-                    y=df[price_col],
-                    mode='lines',
-                    name='Price',
-                    line=dict(color='#00b4ff', width=2)
-                ))
+                fig.add_trace(go.Scatter(x=df[date_col], y=df[price_col], mode='lines', line=dict(color='#00b4ff', width=2)))
                 fig.update_layout(
                     template="plotly_dark",
                     height=400,
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
                     margin=dict(l=20, r=20, t=20, b=20),
-                    xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
-                    yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 chart_shown = True
@@ -972,36 +941,106 @@ if st.session_state.analyzed:
         
         with tab2:
             if ai_result:
-
                 overview = ai_result.get("overview", "N/A")
                 financials = ai_result.get("financials", "N/A")
                 technical = ai_result.get("technical", "N/A")
                 recommendation = ai_result.get("recommendation", "N/A")
-
-                st.markdown(
-                    f"### {symbol} - Investment Analysis"
-                )
-
+                
+                st.markdown(f"### {symbol} - Investment Analysis")
                 st.divider()
-
+                
                 st.markdown("**Overview**")
                 st.write(overview)
-
+                
                 st.markdown("**Financial Health**")
                 st.write(financials)
-
+                
                 st.markdown("**Technical Position**")
                 st.write(technical)
-
+                
                 st.markdown("**Recommendation**")
                 st.write(recommendation)
-
+                
                 st.divider()
+                st.caption(f"Analysis generated by AI • Data source: {data_source}")
+                
+                # Export Buttons
+                st.markdown("---")
+                st.markdown("**Export Report**")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    csv_data = f"""Symbol,{symbol}
+Price,{metrics.get('current_price', 'N/A')}
+Change,{metrics.get('change', 0)}
+Change Percent,{metrics.get('change_percent', 0)}
+P/E Ratio,{metrics.get('pe_ratio', 'N/A')}
+Market Cap,{metrics.get('market_cap', 'N/A')}
+52-Week High,{metrics.get('52_week_high', 'N/A')}
+52-Week Low,{metrics.get('52_week_low', 'N/A')}
+Sector,{metrics.get('sector', 'N/A')}
+Industry,{metrics.get('industry', 'N/A')}
 
-                st.caption(
-                    f"Analysis generated by AI • Data source: {data_source}"
-                )
+Analysis
+Overview,{overview}
+Financials,{financials}
+Technical,{technical}
+Recommendation,{recommendation}
+"""
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv_data,
+                        file_name=f"{symbol}_analysis.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    report_text = f"""
+{'='*60}
+{symbol} - INVESTMENT ANALYSIS REPORT
+{'='*60}
 
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+KEY METRICS
+{'-'*40}
+Price: ${metrics.get('current_price', 'N/A')}
+Change: {metrics.get('change', 0):+.2f} ({metrics.get('change_percent', 0):+.2f}%)
+P/E Ratio: {metrics.get('pe_ratio', 'N/A')}
+Market Cap: ${metrics.get('market_cap', 0)/1e9:.2f}B
+52-Week Range: ${metrics.get('52_week_low', 'N/A')} - ${metrics.get('52_week_high', 'N/A')}
+Sector: {metrics.get('sector', 'N/A')}
+Industry: {metrics.get('industry', 'N/A')}
+
+INVESTMENT ANALYSIS
+{'-'*40}
+
+OVERVIEW:
+{overview}
+
+FINANCIAL HEALTH:
+{financials}
+
+TECHNICAL POSITION:
+{technical}
+
+RECOMMENDATION:
+{recommendation}
+
+{'='*60}
+Analysis generated by AI
+Data source: {data_source}
+{'='*60}
+"""
+                    st.download_button(
+                        label="Download Report",
+                        data=report_text,
+                        file_name=f"{symbol}_report.txt",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
             else:
                 st.info("AI analysis not available for this symbol")
         
@@ -1043,62 +1082,53 @@ if st.session_state.analyzed:
                 
                 # MACD
                 macd = indicators.get('macd', {})
-                if macd:
-                    macd_value = macd.get('macd')
-                    signal = macd.get('signal')
-                    histogram = macd.get('histogram')
-                    
-                    if macd_value is not None:
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("MACD", f"{macd_value:.4f}")
-                        with col2:
-                            st.metric("Signal", f"{signal:.4f}" if signal else "N/A")
-                        with col3:
-                            hist_color = "#00d4aa" if histogram and histogram > 0 else "#ff6b6b"
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-label">Histogram</div>
-                                <div class="metric-value" style="color: {hist_color};">{histogram:.4f}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                if macd and macd.get('macd') is not None:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("MACD", f"{macd.get('macd', 0):.4f}")
+                    with col2:
+                        st.metric("Signal", f"{macd.get('signal', 0):.4f}" if macd.get('signal') else "N/A")
+                    with col3:
+                        hist = macd.get('histogram', 0)
+                        hist_color = "#00d4aa" if hist and hist > 0 else "#ff6b6b"
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Histogram</div>
+                            <div class="metric-value" style="color: {hist_color};">{hist:.4f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 
                 # Bollinger Bands
                 bbands = indicators.get('bollinger', {})
-                if bbands:
-                    upper = bbands.get('upper')
-                    middle = bbands.get('middle')
-                    lower = bbands.get('lower')
+                if bbands and bbands.get('upper') is not None:
+                    st.markdown("""
+                    <div style="margin: 0.5rem 0;">
+                        <h4 style="color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 500;">Bollinger Bands (20,2)</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    if upper is not None and middle is not None and lower is not None:
-                        st.markdown("""
-                        <div style="margin: 0.5rem 0;">
-                            <h4 style="color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 500;">Bollinger Bands (20,2)</h4>
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Upper Band</div>
+                            <div class="metric-value" style="color: #ff6b6b;">${bbands.get('upper', 0):.2f}</div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-label">Upper Band</div>
-                                <div class="metric-value" style="color: #ff6b6b;">${upper:.2f}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        with col2:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-label">Middle (MA20)</div>
-                                <div class="metric-value" style="color: #ffc107;">${middle:.2f}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        with col3:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-label">Lower Band</div>
-                                <div class="metric-value" style="color: #00d4aa;">${lower:.2f}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Middle (MA20)</div>
+                            <div class="metric-value" style="color: #ffc107;">${bbands.get('middle', 0):.2f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col3:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <div class="metric-label">Lower Band</div>
+                            <div class="metric-value" style="color: #00d4aa;">${bbands.get('lower', 0):.2f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
             else:
                 st.info("Technical indicators not available. Install ta library: pip install ta")
         
@@ -1113,9 +1143,7 @@ else:
         <div class="welcome-box">
             <h1 class="welcome-title">Welcome to</h1>
             <h1 class="welcome-title-main">Market Intelligence</h1>
-            <p class="welcome-text">
-                Enter a stock symbol in the sidebar to get started.
-            </p>
+            <p class="welcome-text">Enter a stock symbol in the sidebar to get started.</p>
             <div style="display: flex; gap: 0.3rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
                 <span class="welcome-tag">AAPL</span>
                 <span class="welcome-tag">MSFT</span>
