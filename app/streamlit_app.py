@@ -314,7 +314,126 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+# ============================================================================
+# Apply Theme (Light/Dark)
+# ============================================================================
 
+if st.session_state.get('theme', 'Dark') == "Light":
+    st.markdown("""
+    <style>
+        .stApp { background: #f0f2f5 !important; }
+        
+        section[data-testid="stSidebar"] {
+            background: #ffffff !important;
+            border-right: 1px solid #e0e0e0 !important;
+        }
+        
+        section[data-testid="stSidebar"] * {
+            color: #1a1a2e !important;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+            border: 1px solid #e0e0e0 !important;
+        }
+        
+        .dashboard-title { color: #1a1a2e !important; }
+        .dashboard-subtitle { color: #666 !important; }
+        
+        .metric-card {
+            background: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        }
+        
+        .metric-card:hover {
+            background: #f8f9fa !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        }
+        
+        .metric-label { color: #666 !important; }
+        .metric-value { color: #1a1a2e !important; }
+        
+        .analysis-card {
+            background: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+            color: #1a1a2e !important;
+        }
+        
+        .analysis-card strong { color: #0077ff !important; }
+        
+        .news-card {
+            background: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+        }
+        
+        .news-title { color: #1a1a2e !important; }
+        .news-snippet { color: #555 !important; }
+        .news-source { color: #999 !important; }
+        
+        .welcome-box {
+            background: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+        }
+        
+        .welcome-title { color: #666 !important; }
+        .welcome-title-main { color: #1a1a2e !important; }
+        .welcome-text { color: #666 !important; }
+        .welcome-tag { background: #f0f2f5 !important; color: #333 !important; }
+        
+        .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp p {
+            color: #1a1a2e !important;
+        }
+        
+        .stTextInput > div > div > input {
+            background: #ffffff !important;
+            border: 1px solid #d0d0d0 !important;
+            color: #1a1a2e !important;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] {
+            background: #e8eaed !important;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            color: #666 !important;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: #ffffff !important;
+            color: #1a1a2e !important;
+        }
+        
+        .footer {
+            color: #999 !important;
+            border-top: 1px solid #e0e0e0 !important;
+        }
+        
+        .stCaption, [data-testid="stCaptionContainer"] {
+            color: #888 !important;
+        }
+        
+        .streamlit-expanderHeader {
+            color: #333 !important;
+        }
+        
+        /* Text in sidebar */
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] label {
+            color: #1a1a2e !important;
+        }
+        
+        /* System status card */
+        section[data-testid="stSidebar"] > div > div > div[style*="background: rgba(255,255,255,0.02)"] {
+            background: #f8f9fa !important;
+            border-color: #e0e0e0 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 # ============================================================================
 # LLM Initialization
 # ============================================================================
@@ -634,18 +753,240 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Theme Toggle
+     # Theme Toggle
+      
     st.markdown('<p style="color: rgba(255,255,255,0.4); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem;">Theme</p>', unsafe_allow_html=True)
     
+    # Initialize theme in session state (only once)
+    if 'theme' not in st.session_state:
+        st.session_state.theme = "Dark"
+    
+    # Radio button with key
     theme = st.radio(
         "Theme",
         ["Dark", "Light"],
-        index=0,
+        index=0 if st.session_state.theme == "Dark" else 1,
         label_visibility="collapsed",
-        horizontal=True
+        horizontal=True,
+        key="theme_radio"
     )
     
+    # Update session state if changed
+    if theme != st.session_state.theme:
+        st.session_state.theme = theme
+        st.rerun()
+    
     if theme == "Light":
+        st.markdown("""
+        <style>
+            /* Main background */
+            .stApp {
+                background: #f0f2f5 !important;
+            }
+            
+            /* Sidebar */
+            section[data-testid="stSidebar"] {
+                background: #ffffff !important;
+                border-right: 1px solid #e0e0e0 !important;
+            }
+            
+            section[data-testid="stSidebar"] * {
+                color: #1a1a2e !important;
+            }
+            
+            /* Header */
+            .dashboard-header {
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+            
+            .dashboard-title {
+                color: #1a1a2e !important;
+            }
+            
+            .dashboard-subtitle {
+                color: #666 !important;
+            }
+            
+            /* Metric Cards */
+            .metric-card {
+                background: #ffffff !important;
+                border: 1px solid #e0e0e0 !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+            }
+            
+            .metric-card:hover {
+                background: #f8f9fa !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+            }
+            
+            .metric-label {
+                color: #666 !important;
+            }
+            
+            .metric-value {
+                color: #1a1a2e !important;
+            }
+            
+            /* Analysis Card */
+            .analysis-card {
+                background: #ffffff !important;
+                border: 1px solid #e0e0e0 !important;
+                color: #1a1a2e !important;
+            }
+            
+            .analysis-card strong {
+                color: #0077ff !important;
+            }
+            
+            /* News Cards */
+            .news-card {
+                background: #ffffff !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+            
+            .news-title {
+                color: #1a1a2e !important;
+            }
+            
+            .news-snippet {
+                color: #555 !important;
+            }
+            
+            .news-source {
+                color: #999 !important;
+            }
+            
+            /* Welcome Screen */
+            .welcome-box {
+                background: #ffffff !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+            
+            .welcome-title {
+                color: #666 !important;
+            }
+            
+            .welcome-title-main {
+                color: #1a1a2e !important;
+            }
+            
+            .welcome-text {
+                color: #666 !important;
+            }
+            
+            .welcome-tag {
+                background: #f0f2f5 !important;
+                color: #333 !important;
+            }
+            
+            /* Text elements */
+            h1, h2, h3, h4, h5, h6, p, span, div {
+                color: #1a1a2e;
+            }
+            
+            /* Input fields */
+            .stTextInput > div > div > input {
+                background: #ffffff !important;
+                border: 1px solid #d0d0d0 !important;
+                color: #1a1a2e !important;
+            }
+            
+            .stTextInput > div > div > input:focus {
+                border-color: #0077ff !important;
+                box-shadow: 0 0 0 2px rgba(0, 119, 255, 0.15) !important;
+            }
+            
+            /* Buttons */
+            .stButton > button {
+                background: linear-gradient(135deg, #0077ff 0%, #0055cc 100%) !important;
+                color: #ffffff !important;
+            }
+            
+            /* Tabs */
+            .stTabs [data-baseweb="tab-list"] {
+                background: #e8eaed !important;
+            }
+            
+            .stTabs [data-baseweb="tab"] {
+                color: #666 !important;
+            }
+            
+            .stTabs [aria-selected="true"] {
+                background: #ffffff !important;
+                color: #1a1a2e !important;
+            }
+            
+            /* Expander */
+            .streamlit-expanderHeader {
+                color: #333 !important;
+                background: #ffffff !important;
+            }
+            
+            /* Selectbox */
+            .stSelectbox > div > div {
+                background: #ffffff !important;
+                color: #1a1a2e !important;
+            }
+            
+            /* Radio buttons */
+            .stRadio > div {
+                color: #1a1a2e !important;
+            }
+            
+            /* Checkbox */
+            .stCheckbox > div {
+                color: #1a1a2e !important;
+            }
+            
+            /* Caption text */
+            .stCaption, caption {
+                color: #888 !important;
+            }
+            
+            /* Footer */
+            .footer {
+                color: #999 !important;
+                border-top: 1px solid #e0e0e0 !important;
+            }
+            
+            /* Fix for sidebar text */
+            section[data-testid="stSidebar"] h1,
+            section[data-testid="stSidebar"] h2,
+            section[data-testid="stSidebar"] h3,
+            section[data-testid="stSidebar"] p,
+            section[data-testid="stSidebar"] span,
+            section[data-testid="stSidebar"] div,
+            section[data-testid="stSidebar"] label {
+                color: #1a1a2e !important;
+            }
+            
+            /* Fix for metric cards in light mode */
+            .metric-card .metric-value {
+                color: #1a1a2e !important;
+            }
+            
+            .metric-card .metric-label {
+                color: #666 !important;
+            }
+            
+            /* Badge colors remain same */
+            .badge-buy {
+                background: rgba(0, 180, 130, 0.15) !important;
+                color: #00a080 !important;
+            }
+            
+            .badge-hold {
+                background: rgba(200, 150, 0, 0.15) !important;
+                color: #b8860b !important;
+            }
+            
+            .badge-sell {
+                background: rgba(220, 50, 50, 0.15) !important;
+                color: #cc3333 !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
         st.markdown("""
         <style>
             .stApp { background: #f5f5f7 !important; }
