@@ -434,16 +434,234 @@ if st.session_state.get('theme', 'Dark') == "Light":
         }
     </style>
     """, unsafe_allow_html=True)
+    # Mobile Responsive CSS
+st.markdown("""
+<style>
+    /* ============================================
+       MOBILE RESPONSIVE STYLES
+       ============================================ */
+    
+    /* Tablet and below */
+    @media screen and (max-width: 1024px) {
+        .dashboard-title {
+            font-size: 1.4rem !important;
+        }
+        
+        .metric-value {
+            font-size: 1.2rem !important;
+        }
+        
+        .metric-card {
+            padding: 0.8rem 1rem !important;
+        }
+    }
+    
+    /* Mobile devices */
+    @media screen and (max-width: 768px) {
+        /* Header */
+        .dashboard-header {
+            padding: 1rem 1.2rem !important;
+            margin-bottom: 1rem !important;
+        }
+        
+        .dashboard-title {
+            font-size: 1.2rem !important;
+            line-height: 1.3 !important;
+        }
+        
+        .dashboard-subtitle {
+            font-size: 0.75rem !important;
+        }
+        
+        /* Metric Cards */
+        .metric-card {
+            padding: 0.8rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .metric-label {
+            font-size: 0.65rem !important;
+        }
+        
+        .metric-value {
+            font-size: 1.1rem !important;
+        }
+        
+        .metric-change-positive,
+        .metric-change-negative {
+            font-size: 0.75rem !important;
+        }
+        
+        /* Badges */
+        .badge-buy,
+        .badge-hold,
+        .badge-sell {
+            font-size: 0.7rem !important;
+            padding: 0.25rem 0.75rem !important;
+        }
+        
+        /* News Cards */
+        .news-card {
+            padding: 0.7rem !important;
+            margin-bottom: 0.4rem !important;
+        }
+        
+        .news-title {
+            font-size: 0.85rem !important;
+        }
+        
+        .news-snippet {
+            font-size: 0.75rem !important;
+        }
+        
+        /* Welcome Screen */
+        .welcome-container {
+            padding: 2rem 1rem !important;
+        }
+        
+        .welcome-box {
+            padding: 1.5rem 1rem !important;
+        }
+        
+        .welcome-title {
+            font-size: 1.5rem !important;
+        }
+        
+        .welcome-title-main {
+            font-size: 1.8rem !important;
+        }
+        
+        .welcome-text {
+            font-size: 0.9rem !important;
+        }
+        
+        .welcome-tag {
+            font-size: 0.7rem !important;
+            padding: 0.25rem 0.6rem !important;
+        }
+        
+        /* Tabs */
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.75rem !important;
+            padding: 0.3rem 0.6rem !important;
+        }
+        
+        /* Charts */
+        .js-plotly-plot {
+            height: auto !important;
+        }
+        
+        /* Sidebar */
+        section[data-testid="stSidebar"] {
+            width: 100% !important;
+        }
+        
+        section[data-testid="stSidebar"] > div {
+            padding: 1rem 0.8rem !important;
+        }
+        
+        /* Buttons */
+        .stButton > button {
+            padding: 0.4rem 1rem !important;
+            font-size: 0.85rem !important;
+        }
+        
+        /* Text inputs */
+        .stTextInput > div > div > input {
+            font-size: 0.9rem !important;
+            padding: 0.4rem 0.8rem !important;
+        }
+        
+        /* Footer */
+        .footer {
+            font-size: 0.6rem !important;
+            padding: 0.5rem 0 !important;
+        }
+    }
+    
+    /* Small mobile devices */
+    @media screen and (max-width: 480px) {
+        .dashboard-title {
+            font-size: 1rem !important;
+        }
+        
+        .dashboard-subtitle {
+            font-size: 0.65rem !important;
+        }
+        
+        .metric-value {
+            font-size: 1rem !important;
+        }
+        
+        .metric-label {
+            font-size: 0.6rem !important;
+        }
+        
+        .welcome-title-main {
+            font-size: 1.5rem !important;
+        }
+        
+        .welcome-tag {
+            font-size: 0.65rem !important;
+            padding: 0.2rem 0.5rem !important;
+        }
+        
+        .news-title {
+            font-size: 0.8rem !important;
+        }
+        
+        .news-snippet {
+            font-size: 0.7rem !important;
+        }
+    }
+    
+    /* Make columns stack on mobile */
+    @media screen and (max-width: 768px) {
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+    }
+    
+    /* Improve touch targets */
+    @media screen and (max-width: 768px) {
+        .stButton > button {
+            min-height: 40px !important;
+            padding: 0.5rem 1rem !important;
+        }
+        
+        .stTextInput > div > div > input {
+            min-height: 40px !important;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
 # ============================================================================
 # LLM Initialization
 # ============================================================================
 
+import streamlit as st
+
 @st.cache_resource
 def get_llm():
+    """Initialize Groq LLM with proper API key handling"""
     try:
+        # Try Streamlit Secrets first (for deployed apps)
+        try:
+            api_key = st.secrets["GROQ_API_KEY"]
+        except (KeyError, FileNotFoundError):
+            # Fallback to environment variable (for local development)
+            from src.agentic_finance_dashboard.config import GROQ_API_KEY
+            api_key = GROQ_API_KEY
+        
+        if not api_key:
+            st.error(" GROQ_API_KEY not found in secrets or environment")
+            return None
+        
         return ChatGroq(
             model="qwen/qwen3.8-27b",
-            api_key=GROQ_API_KEY,
+            api_key=api_key,
             temperature=0.3,
             max_tokens=512,
         )
@@ -980,7 +1198,13 @@ with st.sidebar:
                 background: rgba(200, 150, 0, 0.15) !important;
                 color: #b8860b !important;
             }
-            
+            @media screen and (max-width: 768px) {
+    [data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+}
             .badge-sell {
                 background: rgba(220, 50, 50, 0.15) !important;
                 color: #cc3333 !important;
@@ -1093,7 +1317,8 @@ if st.session_state.analyzed:
         </div>
         """, unsafe_allow_html=True)
         
-        col1, col2, col3, col4, col5 = st.columns(5)
+        # Use columns that stack on mobile
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
         
         # Price
         price = metrics.get('current_price', 'N/A')

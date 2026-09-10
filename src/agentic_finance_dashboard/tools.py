@@ -24,7 +24,17 @@ except ImportError:
         ta = None
         USE_TA_LIB = False
         print("Technical indicators library not installed. Install with: pip install ta")
-
+def get_tavily_key():
+    """Get Tavily API key from secrets or env"""
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and "TAVILY_API_KEY" in st.secrets:
+            return st.secrets["TAVILY_API_KEY"]
+    except Exception:
+        pass
+    
+    from .config import TAVILY_API_KEY
+    return TAVILY_API_KEY
 def get_stock_data(symbol: str, period: str = "1mo") -> dict:
     """
     Yahoo Finance se stock data fetch karta hai
