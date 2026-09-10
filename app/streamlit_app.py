@@ -1,5 +1,5 @@
 """
-Market Intelligence Dashboard
+AlphaSignal Dashboard
 Professional Financial Analysis Platform
 """
 
@@ -22,7 +22,7 @@ from langchain_core.messages import HumanMessage
 
 # Page Configuration
 st.set_page_config(
-    page_title="Market Intelligence Dashboard",
+    page_title="AlphaSignal Dashboard",
     page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -664,7 +664,7 @@ RECOMMENDATION: [BUY/HOLD/SELL] - [justification]
 with st.sidebar:
     st.markdown("""
     <div style="padding: 0.5rem 0 0.5rem 0;">
-        <h2 style="color: #ffffff; font-size: 1.2rem; font-weight: 600; margin: 0;">Market Intelligence</h2>
+        <h2 style="color: #ffffff; font-size: 1.2rem; font-weight: 600; margin: 0;">AlphaSignal</h2>
         <p style="color: rgba(255,255,255,0.3); font-size: 0.7rem; margin: 0;">AI-Powered Analysis Platform</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1036,7 +1036,7 @@ st.markdown(f"""
 <div class="dashboard-header">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
         <div>
-            <h1 class="dashboard-title">Market Intelligence Dashboard</h1>
+            <h1 class="dashboard-title">AlphaSignal</h1>
             <p class="dashboard-subtitle">Real-time financial analysis powered by artificial intelligence</p>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -1483,7 +1483,7 @@ else:
     <div class="welcome-container">
         <div class="welcome-box">
             <h1 class="welcome-title">Welcome to</h1>
-            <h1 class="welcome-title-main">Market Intelligence</h1>
+            <h1 class="welcome-title-main">AlphaSignal Dashboard</h1>
             <p class="welcome-text">Enter a stock symbol in the sidebar to get started.</p>
             <div style="display: flex; gap: 0.3rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
                 <span class="welcome-tag">AAPL</span>
@@ -1510,6 +1510,6 @@ else:
 
 st.markdown("""
 <div class="footer">
-    Market Intelligence Platform  •  AI-Powered Analysis  •  Real-Time Data  •  Global Markets
+    AlphaSignal Platform  •  AI-Powered Analysis  •  Real-Time Data  •  Global Markets
 </div>
 """, unsafe_allow_html=True)
