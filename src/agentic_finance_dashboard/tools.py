@@ -157,7 +157,7 @@ def calculate_technical_indicators(hist: pd.DataFrame) -> dict:
             print("Technical indicators calculated using ta library")
             
         elif not USE_TA_LIB and ta is not None:
-            # Using pandas-ta library (fallback)
+
             
             # RSI
             rsi = ta.rsi(df['Close'], length=14)
